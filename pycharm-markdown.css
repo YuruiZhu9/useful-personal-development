@@ -1,0 +1,262 @@
+:root {
+  --md-text: #d7ddd8;
+  --md-text-body: #d3dde6;
+  --md-text-list: #ccd8e2;
+  --md-muted: #a8b1ab;
+  --md-heading: #eef4f0;
+  --md-heading-soft: #c4cdc7;
+  --md-strong: #f4f7f5;
+  --md-em: #bec8c2;
+  --md-link: #88d2dc;
+  --md-link-hover: #ace6ef;
+  --md-quote-text: #b8cdd7;
+  --md-inline-code-text: #cae7f2;
+  --md-list-marker: #8fc7d2;
+  --md-border: rgba(173, 184, 194, 0.22);
+  --md-quote-line: rgba(123, 192, 197, 0.7);
+  --md-quote-bg: rgba(255, 255, 255, 0.035);
+  --md-code-bg: rgba(12, 17, 23, 0.58);
+  --md-inline-code-bg: rgba(148, 163, 184, 0.12);
+  --md-table-head: rgba(255, 255, 255, 0.045);
+  --md-table-row-alt: rgba(255, 255, 255, 0.022);
+}
+
+body,
+.markdown-body {
+  color: var(--md-text);
+  background: transparent;
+  font-family: "Georgia", "Cambria", "Times New Roman", "Microsoft YaHei UI",
+    "PingFang SC", serif;
+  font-size: 17px;
+  line-height: 1.75;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0 auto 0 clamp(18px, 2.8vw, 28px);
+  max-width: 780px;
+  padding: 48px 56px 72px;
+  box-sizing: border-box;
+}
+
+.markdown-body {
+  margin: 0 auto 0 clamp(18px, 2.8vw, 28px);
+  max-width: 780px;
+  padding: 48px 56px 72px;
+  box-sizing: border-box;
+}
+
+body > :first-child,
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+body > :last-child,
+.markdown-body > :last-child {
+  margin-bottom: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--md-heading);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.24;
+  margin: 2.2rem 0 0.95rem;
+}
+
+h1 {
+  font-size: 2.45rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--md-border);
+}
+
+h2 {
+  font-size: 1.82rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--md-border);
+}
+
+h3 {
+  font-size: 1.4rem;
+}
+
+h4 {
+  font-size: 1.13rem;
+}
+
+h5,
+h6 {
+  font-size: 1rem;
+  color: var(--md-heading-soft);
+}
+
+p,
+ul,
+ol,
+blockquote,
+table,
+pre {
+  margin: 1.1rem 0 1.35rem;
+}
+
+p {
+  color: var(--md-text-body);
+}
+
+li {
+  color: var(--md-text-list);
+}
+
+td {
+  color: var(--md-text-body);
+}
+
+th {
+  color: var(--md-heading);
+}
+
+a {
+  color: var(--md-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  color: var(--md-link-hover);
+}
+
+strong {
+  color: var(--md-strong);
+  font-weight: 700;
+}
+
+em {
+  color: var(--md-em);
+}
+
+ul,
+ol {
+  padding-left: 1.4rem;
+}
+
+li {
+  margin: 0.35rem 0;
+}
+
+li::marker {
+  color: var(--md-list-marker);
+}
+
+blockquote {
+  padding: 0.35rem 0 0.35rem 1.15rem;
+  border-left: 3px solid var(--md-quote-line);
+  background: var(--md-quote-bg);
+  color: var(--md-muted);
+  border-radius: 0 14px 14px 0;
+}
+
+blockquote p,
+blockquote li {
+  color: var(--md-quote-text);
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--md-border);
+  margin: 2.4rem 0;
+}
+
+code,
+pre code,
+kbd,
+samp {
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 0.92em;
+}
+
+p code,
+li code,
+blockquote code,
+td code,
+th code {
+  color: var(--md-inline-code-text);
+  padding: 0.14rem 0.42rem;
+  background: var(--md-inline-code-bg);
+  border: 1px solid rgba(173, 184, 194, 0.18);
+  border-radius: 0.38rem;
+}
+
+pre {
+  padding: 1.05rem 1.15rem;
+  background: var(--md-code-bg);
+  border: 1px solid var(--md-border);
+  border-radius: 16px;
+  overflow-x: auto;
+}
+
+pre code {
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: none;
+  font-size: 0.92rem;
+  line-height: 1.68;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 0.97rem;
+}
+
+th,
+td {
+  border: 1px solid var(--md-border);
+  padding: 0.72rem 0.85rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+thead th {
+  background: var(--md-table-head);
+  color: var(--md-heading);
+  font-weight: 700;
+}
+
+tbody tr:nth-child(even) {
+  background: var(--md-table-row-alt);
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.55rem auto;
+  border-radius: 18px;
+  border: 1px solid var(--md-border);
+  background: transparent;
+}
+
+@media (max-width: 900px) {
+  body,
+  .markdown-body {
+    margin: 0 16px 0 12px;
+    padding: 32px 24px 48px;
+    font-size: 16px;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.58rem;
+  }
+}

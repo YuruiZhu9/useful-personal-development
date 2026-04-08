@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Coding工具分享：从Claude Code开始</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-primary: #0a0e17;
+    --bg-secondary: #111827;
+    --bg-card: rgba(17, 24, 39, 0.8);
+    --accent-cyan: #00f0ff;
+    --accent-purple: #a855f7;
+    --accent-blue: #3b82f6;
+    --accent-green: #10b981;
+    --accent-orange: #f59e0b;
+    --accent-pink: #ec4899;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-dim: #64748b;
+    --border-glow: rgba(0, 240, 255, 0.15);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--bg-primary);
+    font-family: 'Noto Sans SC', sans-serif;
+    color: var(--text-primary);
+    user-select: none;
+  }
+
+  /* ── Slide Container ── */
+  .slides-wrapper { width: 100%; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 25px 80px 40px 80px;
+    opacity: 0; visibility: hidden;
+    transform: translateX(40px);
+    transition: opacity 0.45s ease, transform 0.45s ease, visibility 0s 0.45s;
+    pointer-events: none; overflow-y: auto;
+  }
+  .slide.active {
+    opacity: 1; visibility: visible; transform: translateX(0);
+    pointer-events: auto;
+    transition: opacity 0.45s ease, transform 0.45s ease, visibility 0s 0s;
+    z-index: 2;
+  }
+  .slide.exit-left {
+    opacity: 0; visibility: hidden; transform: translateX(-40px); z-index: 1;
+    transition: opacity 0.45s ease, transform 0.45s ease, visibility 0s 0.45s;
+  }
+
+  /* ── Background ── */
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(0,240,255,0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(168,85,247,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.03) 0%, transparent 50%);
+    pointer-events: none; z-index: 0;
+  }
+  .grid-bg {
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── Typography ── */
+  .slide-title {
+    font-size: 2.6rem; font-weight: 900; margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue), var(--accent-purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    letter-spacing: -0.02em; text-align: center; flex-shrink: 0;
+  }
+  .slide-subtitle {
+    font-size: 1.08rem; color: var(--text-secondary);
+    margin-bottom: 24px; text-align: center; flex-shrink: 0;
+  }
+  .section-tag {
+    display: inline-block;
+    font-size: 0.95rem; font-weight: 700; letter-spacing: 0.1em;
+    color: var(--accent-cyan);
+    border: 1px solid rgba(0,240,255,0.3);
+    padding: 5px 20px; border-radius: 18px;
+    margin-bottom: 14px;
+    background: rgba(0,240,255,0.05);
+    flex-shrink: 0;
+  }
+  .section-tag .sub-page {
+    color: var(--text-dim); font-weight: 400;
+    margin-left: 10px; font-size: 0.8rem;
+  }
+
+  /* ── Content Elements ── */
+  .content-box { width: 100%; max-width: 1080px; }
+  .card-grid {
+    display: grid; gap: 20px;
+    width: 100%; max-width: 1080px; flex-shrink: 0;
+  }
+  .card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .card-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border-glow);
+    border-radius: 12px; padding: 24px; backdrop-filter: blur(10px);
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .card:hover { border-color: rgba(0,240,255,0.35); transform: translateY(-1px); }
+  .card h3 {
+    font-size: 1.1rem; font-weight: 700; margin-bottom: 10px;
+    color: var(--accent-cyan);
+  }
+  .card p, .card li {
+    font-size: 0.96rem; color: var(--text-secondary); line-height: 1.7;
+  }
+  .card ul { padding-left: 16px; }
+  .card li { margin-bottom: 4px; }
+
+  /* ── Table ── */
+  .tech-table {
+    width: 100%; max-width: 1080px;
+    border-collapse: separate; border-spacing: 0;
+    font-size: 0.92rem; flex-shrink: 0;
+  }
+  .tech-table th {
+    background: rgba(0,240,255,0.06); color: var(--accent-cyan);
+    font-weight: 600; padding: 10px 16px; text-align: left;
+    border-bottom: 1px solid var(--border-glow); font-size: 0.95rem;
+  }
+  .tech-table td {
+    padding: 9px 16px; border-bottom: 1px solid rgba(255,255,255,0.03);
+    color: var(--text-secondary);
+  }
+  .tech-table tr:hover td { background: rgba(0,240,255,0.02); }
+  .tech-table code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.88rem; background: rgba(0,240,255,0.06);
+    padding: 2px 6px; border-radius: 3px; color: var(--accent-cyan);
+  }
+
+  /* ── Bullet List ── */
+  .bullet-list {
+    list-style: none; padding: 0;
+    max-width: 960px; width: 100%; flex-shrink: 0;
+  }
+  .bullet-list li {
+    font-size: 1.05rem; color: var(--text-secondary);
+    padding: 9px 0 9px 26px; position: relative;
+    line-height: 1.7; border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .bullet-list li::before {
+    content: '▸'; position: absolute; left: 0;
+    color: var(--accent-cyan); font-weight: bold;
+  }
+  .bullet-list li strong { color: var(--text-primary); }
+
+  /* ── Code Block ── */
+  .code-block {
+    background: rgba(0,0,0,0.5); border: 1px solid var(--border-glow);
+    border-radius: 10px; padding: 18px 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem; line-height: 1.8;
+    color: var(--text-secondary);
+    max-width: 760px; width: 100%; overflow-x: auto; flex-shrink: 0;
+  }
+  .code-block .key { color: var(--accent-cyan); }
+  .code-block .str { color: var(--accent-green); }
+  .code-block .comment { color: var(--text-dim); font-style: italic; }
+
+  /* ── Highlight Box ── */
+  .highlight-box {
+    background: linear-gradient(135deg, rgba(0,240,255,0.04), rgba(168,85,247,0.04));
+    border: 1px solid rgba(0,240,255,0.15); border-radius: 12px;
+    padding: 18px 24px; max-width: 960px; width: 100%; flex-shrink: 0;
+  }
+  .highlight-box p { font-size: 1rem; line-height: 1.75; color: var(--text-secondary); }
+  .highlight-box strong { color: var(--accent-cyan); }
+
+  /* ── Flow ── */
+  .flow-steps {
+    display: flex; align-items: center; gap: 8px;
+    flex-wrap: wrap; justify-content: center; flex-shrink: 0;
+  }
+  .flow-step {
+    background: var(--bg-card); border: 1px solid var(--border-glow);
+    border-radius: 8px; padding: 10px 16px;
+    font-size: 0.96rem; color: var(--text-secondary);
+  }
+  .flow-arrow { color: var(--accent-cyan); font-size: 1rem; opacity: 0.6; }
+
+  /* ── Navigation ── */
+  .nav-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 48px;
+    background: rgba(10,14,23,0.92); backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glow);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px; z-index: 100;
+  }
+  .nav-btn {
+    background: rgba(0,240,255,0.06); border: 1px solid rgba(0,240,255,0.15);
+    color: var(--accent-cyan); padding: 6px 20px; border-radius: 5px;
+    font-size: 0.85rem; cursor: pointer; font-family: 'Noto Sans SC', sans-serif;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .nav-btn:hover { background: rgba(0,240,255,0.12); border-color: rgba(0,240,255,0.3); }
+  .nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+  .page-indicator { font-size: 0.8rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Progress Bar ── */
+  .progress-bar {
+    position: fixed; top: 0; left: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+    transition: width 0.4s ease; z-index: 100;
+    box-shadow: 0 0 10px rgba(0,240,255,0.3);
+  }
+
+  /* ── Title Slide ── */
+  .title-slide { text-align: center; }
+  .title-slide .main-title {
+    font-size: 3.6rem; font-weight: 900;
+    background: linear-gradient(135deg, var(--accent-cyan), #60a5fa, var(--accent-purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    margin-bottom: 14px; letter-spacing: -0.02em;
+  }
+  .title-slide .sub { font-size: 1.5rem; color: var(--text-secondary); margin-bottom: 36px; }
+  .title-slide .meta { font-size: 1.1rem; color: var(--text-secondary); line-height: 1.8; }
+  .glow-line {
+    width: 120px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+    margin: 22px auto;
+  }
+
+  /* ── Badge ── */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 4px;
+    font-size: 0.88rem; font-weight: 600; margin: 2px;
+  }
+  .badge.cyan { background: rgba(0,240,255,0.1); color: var(--accent-cyan); }
+  .badge.purple { background: rgba(168,85,247,0.1); color: var(--accent-purple); }
+  .badge.green { background: rgba(16,185,129,0.1); color: var(--accent-green); }
+  .badge.orange { background: rgba(245,158,11,0.1); color: var(--accent-orange); }
+  .badge.blue { background: rgba(59,130,246,0.1); color: var(--accent-blue); }
+  .badge.pink { background: rgba(236,72,153,0.1); color: var(--accent-pink); }
+
+  /* ── Ending ── */
+  .ending-text { font-size: 1.4rem; color: var(--text-secondary); text-align: center; line-height: 2; }
+  .ending-text strong { color: var(--accent-cyan); }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .slide { padding: 20px 20px 50px 20px; }
+    .title-slide .main-title { font-size: 2.2rem; }
+    .slide-title { font-size: 1.8rem; }
+    .card-grid.cols-3, .card-grid.cols-4 { grid-template-columns: 1fr; }
+    .card-grid.cols-2 { grid-template-columns: 1fr; }
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .slide.active .card,
+  .slide.active .bullet-list li,
+  .slide.active .tech-table tr,
+  .slide.active .code-block,
+  .slide.active .highlight-box,
+  .slide.active .flow-steps {
+    animation: fadeInUp 0.4s ease both;
+  }
+  .slide.active .card:nth-child(1) { animation-delay: 0.05s; }
+  .slide.active .card:nth-child(2) { animation-delay: 0.1s; }
+  .slide.active .card:nth-child(3) { animation-delay: 0.15s; }
+  .slide.active .card:nth-child(4) { animation-delay: 0.2s; }
+
+  /* ── Enhancement: Floating Particles ── */
+  .particles-canvas {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── Enhancement: Animated Gradient Border ── */
+  @keyframes borderGlow {
+    0%   { border-color: rgba(0,240,255,0.25); box-shadow: 0 0 8px rgba(0,240,255,0.06); }
+    33%  { border-color: rgba(168,85,247,0.25); box-shadow: 0 0 8px rgba(168,85,247,0.06); }
+    66%  { border-color: rgba(59,130,246,0.25); box-shadow: 0 0 8px rgba(59,130,246,0.06); }
+    100% { border-color: rgba(0,240,255,0.25); box-shadow: 0 0 8px rgba(0,240,255,0.06); }
+  }
+  .card {
+    animation: borderGlow 6s ease-in-out infinite;
+  }
+  .card:nth-child(2) { animation-delay: -2s; }
+  .card:nth-child(3) { animation-delay: -4s; }
+  .card:nth-child(4) { animation-delay: -1s; }
+
+  /* ── Enhancement: Corner Decorative Frames ── */
+  .corner-frame {
+    position: absolute;
+    width: 40px; height: 40px;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .corner-frame::before, .corner-frame::after {
+    content: '';
+    position: absolute;
+    background: linear-gradient(135deg, var(--accent-cyan), transparent);
+    opacity: 0.25;
+  }
+  .corner-frame::before { width: 100%; height: 1.5px; }
+  .corner-frame::after  { width: 1.5px; height: 100%; }
+
+  .corner-tl { top: 16px; left: 16px; }
+  .corner-tl::before { top: 0; left: 0; }
+  .corner-tl::after  { top: 0; left: 0; }
+
+  .corner-tr { top: 16px; right: 16px; }
+  .corner-tr::before { top: 0; right: 0; }
+  .corner-tr::after  { top: 0; right: 0; }
+
+  .corner-bl { bottom: 60px; left: 16px; }
+  .corner-bl::before { bottom: 0; left: 0; background: linear-gradient(45deg, var(--accent-cyan), transparent); }
+  .corner-bl::after  { bottom: 0; left: 0; background: linear-gradient(315deg, var(--accent-cyan), transparent); }
+
+  .corner-br { bottom: 60px; right: 16px; }
+  .corner-br::before { bottom: 0; right: 0; background: linear-gradient(45deg, var(--accent-cyan), transparent); }
+  .corner-br::after  { bottom: 0; right: 0; background: linear-gradient(315deg, var(--accent-cyan), transparent); }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<canvas class="particles-canvas" id="particlesCanvas"></canvas>
+<div class="progress-bar" id="progressBar"></div>
+
+<div class="slides-wrapper" id="slidesWrapper">
+
+  <!-- Corner Frames (shared across slides via fixed positioning) -->
+  <div class="corner-frame corner-tl"></div>
+  <div class="corner-frame corner-tr"></div>
+  <div class="corner-frame corner-bl"></div>
+  <div class="corner-frame corner-br"></div>
+
+  <!-- ═══ Slide 0: Title ═══ -->
+  <div class="slide title-slide active" data-index="0">
+    <div class="main-title">AI Coding 工具分享</div>
+    <div class="sub">从 Claude Code 开始</div>
+    <div class="glow-line"></div>
+    <div class="meta">帮助大家高效使用AI编码工具，减少重复编码，提升开发效率与代码质量</div>
+  </div>
+
+  <!-- ═══ Slide 1: 前言 ═══ -->
+  <div class="slide" data-index="1">
+    <div class="section-tag">前言</div>
+    <h2 class="slide-title">分享目标</h2>
+    <div class="bullet-list" style="max-width:780px; text-align:center;">
+      <li style="text-align:center; padding-left:0; border-bottom:none; font-size:1.12rem; line-height:1.8;"><strong>管中窥豹</strong>：通过一个工具的使用，学习AI Agent工具的使用思想</li>
+      <li style="text-align:center; padding-left:0; border-bottom:none; font-size:1.12rem; line-height:1.8;"><strong>分享主题</strong>：以Claude Code为主线学习AI Coding工具的使用</li>
+      <li style="text-align:center; padding-left:0; border-bottom:none; font-size:1.12rem; line-height:1.8;">代表AI coding从"代码补全"走向<strong>"agent化开发"</strong>的变化</li>
+      <li style="text-align:center; padding-left:0; border-bottom:none; font-size:1.12rem; line-height:1.8;">欢迎随时提问，交流实际使用经验</li>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 2: AI Coding工具分类 ═══ -->
+  <div class="slide" data-index="2">
+    <div class="section-tag">一 · AI Coding工具<span class="sub-page">1 / 2</span></div>
+    <h2 class="slide-title">工具大致分三类</h2>
+    <div class="card-grid cols-3">
+      <div class="card">
+        <h3>CLI / Agent 型</h3>
+        <p><span class="badge cyan">Claude Code</span> <span class="badge cyan">Codex CLI</span></p>
+        <p style="margin-top:6px"><span class="badge purple">OpenClaw</span> <span class="badge purple">Gemini CLI</span></p>
+        <p style="margin-top:6px"><span class="badge blue">opencode cli</span> <span class="badge blue">qwen cli</span></p>
+        <p style="margin-top:12px">终端工作流、任务执行、自动化</p>
+      </div>
+      <div class="card">
+        <h3>IDE 插件型</h3>
+        <p><span class="badge green">GitHub Copilot</span></p>
+        <p style="margin-top:6px"><span class="badge green">Claude Code 插件</span></p>
+        <p style="margin-top:12px">IDE上做增强，接入方便</p>
+      </div>
+      <div class="card">
+        <h3>AI 原生 IDE</h3>
+        <p><span class="badge orange">Cursor</span> <span class="badge orange">Trae</span></p>
+        <p style="margin-top:6px"><span class="badge orange">Qoder</span></p>
+        <p style="margin-top:12px">快速原型、新手上手</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 3: 工具选择 ═══ -->
+  <div class="slide" data-index="3">
+    <div class="section-tag">一 · AI Coding工具<span class="sub-page">2 / 2</span></div>
+    <h2 class="slide-title">选择推荐</h2>
+    <div class="card-grid cols-2">
+      <div class="card">
+        <h3>Agent 工具的主要能力</h3>
+        <ul>
+          <li style="color:#c8d3e0">编码质量和复杂逻辑能力</li>
+          <li style="color:#c8d3e0">对项目上下文的理解深度</li>
+          <li style="color:#c8d3e0">读文件、改文件、跑命令、调试能力</li>
+          <li style="color:#c8d3e0">权限模型是否清晰，安全性</li>
+          <li style="color:#c8d3e0">扩展：Skills、Hooks、MCP、Subagent、Memory</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>推荐组合</h3>
+        <ul>
+          <li><strong style="color:var(--accent-cyan)">Claude Code</strong><span style="color:#c8d3e0">：主力编码 agent</span></li>
+          <li><strong style="color:var(--accent-cyan)">Codex</strong><span style="color:#c8d3e0">：补充型工具，和 CC 互补</span></li>
+          <li><strong style="color:var(--accent-cyan)">Trae / Cursor</strong><span style="color:#c8d3e0">：IDE 入口，图形界面友好</span></li>
+          <li><strong style="color:var(--accent-cyan)">OpenClaw</strong><span style="color:#c8d3e0">：智能助手 / 调度层</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 4: CC介绍 ═══ -->
+  <div class="slide" data-index="4">
+    <div class="section-tag">二 · Claude Code<span class="sub-page">1 / 5</span></div>
+    <h2 class="slide-title">不只是"补全代码"</h2>
+    <p class="slide-subtitle">业界第一个具有 agent 能力的 coding 助手</p>
+    <div class="flow-steps">
+      <div class="flow-step">读代码</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">理解上下文</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">修改文件</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">执行命令</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">调试问题</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">拆分任务</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">串联工具</div>
+    </div>
+    <div class="highlight-box" style="margin-top:28px">
+      <p>它的能力上限来自背后的 <strong>Harness 能力</strong>，而不只是模型本身。AI协作方式的交互重心需要从"提示词技巧"转为<strong>"工作流和工程化使用方式"</strong>。</p>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 5: 安装与接入 ═══ -->
+  <div class="slide" data-index="5">
+    <div class="section-tag">二 · Claude Code<span class="sub-page">2 / 5</span></div>
+    <h2 class="slide-title">快速上手</h2>
+    <div class="content-box" style="max-width:800px">
+      <div class="code-block" style="margin-bottom:18px">
+        <span class="comment">// 0. 环境要求：Node.js v20+</span><br>
+        <span class="comment">// 1. 安装 CLI</span><br>
+        npm install -g @anthropic-ai/claude-code<br><br>
+        <span class="comment">// 2. 启动验证</span><br>
+        claude -version<br><br>
+        <span class="comment">// 3. 输入简单指令测试</span><br>
+        claude<br>
+        &gt; 写一个Python求和函数
+      </div>
+      <div class="highlight-box">
+        <p>配置 API 两种方式：<strong>settings.json 文件配置</strong>（单厂商）或 <strong>环境变量配置</strong>（多厂商切换）</p>
+        <p style="margin-top:8px">注意：api 和 url 需兼容 Anthropic 格式</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 6: 环境变量配置 ═══ -->
+  <div class="slide" data-index="6">
+    <div class="section-tag">二 · Claude Code<span class="sub-page">3 / 5</span></div>
+    <h2 class="slide-title">settings.json 配置</h2>
+    <div class="code-block" style="max-width:720px">
+      {<br>
+      &nbsp;&nbsp;<span class="key">"env"</span>: {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"ANTHROPIC_AUTH_TOKEN"</span>: <span class="str">"智谱API Key"</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"ANTHROPIC_BASE_URL"</span>: <span class="str">"https://open.bigmodel.cn/api/anthropic"</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"API_TIMEOUT_MS"</span>: <span class="str">"3000000"</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"ANTHROPIC_DEFAULT_HAIKU_MODEL"</span>: <span class="str">"glm-4.7"</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"ANTHROPIC_DEFAULT_SONNET_MODEL"</span>: <span class="str">"glm-5.1"</span>,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"ANTHROPIC_DEFAULT_OPUS_MODEL"</span>: <span class="str">"glm-5-turbo"</span><br>
+      &nbsp;&nbsp;}<br>
+      }
+    </div>
+    <div class="bullet-list" style="margin-top:20px; max-width:720px">
+      <li><strong>CC-Switch</strong>：快速切换厂商</li>
+      <li><strong>cmd 环境变量</strong>：适用于多套 API Key 并行处理场景</li>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 7: 斜杠命令 ═══ -->
+  <div class="slide" data-index="7">
+    <div class="section-tag">二 · Claude Code<span class="sub-page">4 / 5</span></div>
+    <h2 class="slide-title">常用命令速查</h2>
+    <table class="tech-table">
+      <thead>
+        <tr><th>命令</th><th>说明</th><th>命令</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>/init</code></td><td>生成 CLAUDE.md</td><td><code>/compact</code></td><td>压缩上下文，释放 token</td></tr>
+        <tr><td><code>/help</code></td><td>查看帮助</td><td><code>/clear</code></td><td>清空对话历史</td></tr>
+        <tr><td><code>/resume</code></td><td>恢复上一次会话</td><td><code>/rewind</code></td><td>撤回上一次操作</td></tr>
+        <tr><td><code>/doctor</code></td><td>环境诊断</td><td><code>/status</code></td><td>查看配置和连接</td></tr>
+        <tr><td><code>/memory</code></td><td>管理持久化记忆</td><td><code>/mcp</code></td><td>管理 MCP 服务器</td></tr>
+        <tr><td><code>/debug</code></td><td>调试模式</td><td><code>/cost</code></td><td>Token 消耗统计</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ Slide 8: 快捷键与启动 ═══ -->
+  <div class="slide" data-index="8">
+    <div class="section-tag">二 · Claude Code<span class="sub-page">5 / 5</span></div>
+    <h2 class="slide-title">快捷键 & 启动方式</h2>
+    <div class="card-grid cols-2">
+      <div class="card">
+        <h3>快捷键</h3>
+        <table class="tech-table" style="max-width:100%">
+          <tr><td><code>Shift+Tab</code></td><td>切换回复模式</td></tr>
+          <tr><td><code>Ctrl+Enter</code></td><td>换行</td></tr>
+          <tr><td><code>Ctrl+C</code></td><td>取消 / 复制</td></tr>
+          <tr><td><code>Ctrl+K</code></td><td>删除光标后内容</td></tr>
+          <tr><td><code>@文件名</code></td><td>引用项目文件</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>启动方式</h3>
+        <table class="tech-table" style="max-width:100%">
+          <tr><td><code>claude</code></td><td>普通模式</td></tr>
+          <tr><td><code>--skip-permissions</code></td><td>跳过权限确认</td></tr>
+          <tr><td><code>claude -p "指令"</code></td><td>非交互模式</td></tr>
+          <tr><td><code>claude --resume</code></td><td>恢复上次会话</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 9: AI Coding原则 ═══ -->
+  <div class="slide" data-index="9">
+    <div class="section-tag">三 · AI Coding 经验<span class="sub-page">1 / 4</span></div>
+    <h2 class="slide-title">AI Coding 的原则</h2>
+    <p class="slide-subtitle">模型已经足够聪明，你只需要做好引导</p>
+    <div class="card-grid cols-4">
+      <div class="card" style="text-align:center">
+        <div style="font-size:2rem;margin-bottom:8px;color:var(--accent-cyan)">01</div>
+        <h3>需求拆解</h3>
+        <p>具体到你需要的是什么</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:2rem;margin-bottom:8px;color:var(--accent-purple)">02</div>
+        <h3>约束明确</h3>
+        <p>明确模型不能做的事</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:2rem;margin-bottom:8px;color:var(--accent-green)">03</div>
+        <h3>验收标准</h3>
+        <p>设定规则和目标</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:2rem;margin-bottom:8px;color:var(--accent-orange)">04</div>
+        <h3>控制长度</h3>
+        <p>不要一次给太多输入</p>
+      </div>
+    </div>
+    <div class="highlight-box" style="margin-top:20px">
+      <p>先把<strong>意图写清楚</strong>：目标、边界、技术栈、输入输出、约束、验收标准。先把 Spec 写得清晰明确，比纯 vibe coding 更有效。</p>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 10: Vibe Coding ═══ -->
+  <div class="slide" data-index="10">
+    <div class="section-tag">三 · AI Coding 经验<span class="sub-page">2 / 4</span></div>
+    <h2 class="slide-title">Vibe Coding 方法论</h2>
+    <p class="slide-subtitle">不是"凭感觉让AI乱写"，而是用自然语言驱动、用中间产物约束、用验收标准收敛</p>
+    <div class="flow-steps" style="margin-bottom:22px">
+      <div class="flow-step" style="border-color:rgba(0,240,255,0.4)">需求分析</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" style="border-color:rgba(168,85,247,0.4)">架构设计</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" style="border-color:rgba(59,130,246,0.4)">任务规划</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" style="border-color:rgba(16,185,129,0.4)">代码生成</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" style="border-color:rgba(245,158,11,0.4)">资源生成</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" style="border-color:rgba(236,72,153,0.4)">代码集成</div>
+    </div>
+    <div class="card-grid cols-2">
+      <div class="card">
+        <h3>核心要点</h3>
+        <ul>
+          <li>意图明确——"我要什么"说清楚</li>
+          <li>约束越清楚，成功率越高</li>
+          <li>技术栈、目录结构、接口协议越明确越好</li>
+          <li><strong>Vibe 只是交互模式变了，工程化才是落地关键</strong></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>过渡到 Spec Coding</h3>
+        <p>Vibe Coding → TDD → SDD</p>
+        <p style="margin-top:10px">使用结构化文档规定：</p>
+        <ul style="margin-top:6px">
+          <li>项目目录结构、构建命令</li>
+          <li>测试流程、代码规范</li>
+          <li>PR 提交流程</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 11: Skills体系 ═══ -->
+  <div class="slide" data-index="11">
+    <div class="section-tag">三 · AI Coding 经验<span class="sub-page">3 / 4</span></div>
+    <h2 class="slide-title">Skills 体系：把经验变成可复用资产</h2>
+    <p class="slide-subtitle">Skills 本质是把 prompt、规范、流程、工具调用方式做成可复用资产</p>
+    <div class="card-grid cols-3">
+      <div class="card">
+        <h3>编码类</h3>
+        <p><span class="badge cyan">code-reviewer</span> <span class="badge cyan">coding-standards</span></p>
+        <p style="margin-top:4px"><span class="badge cyan">tdd-workflow</span> <span class="badge cyan">clickhouse-io</span></p>
+      </div>
+      <div class="card">
+        <h3>内容 / 商业类</h3>
+        <p><span class="badge purple">article-writing</span> <span class="badge purple">content-engine</span></p>
+        <p style="margin-top:4px"><span class="badge purple">market-research</span> <span class="badge purple">investor-materials</span></p>
+      </div>
+      <div class="card">
+        <h3>元技能</h3>
+        <p><span class="badge green">continuous-learning</span></p>
+        <p style="margin-top:4px"><span class="badge green">iterative-retrieval</span></p>
+        <p style="margin-top:4px"><span class="badge green">strategic-compact</span></p>
+      </div>
+    </div>
+    <div class="highlight-box" style="margin-top:14px">
+      <p><strong>对个人</strong>：提效工具，减少重复解释 &nbsp;&nbsp;<strong>对团队</strong>：把"个人经验"变成"团队共识"。渐进式加载，仅加载当前需要的 Skills。</p>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 12: 使用技巧 ═══ -->
+  <div class="slide" data-index="12">
+    <div class="section-tag">三 · AI Coding 经验<span class="sub-page">4 / 4</span></div>
+    <h2 class="slide-title">使用小技巧</h2>
+    <div class="bullet-list">
+      <li><strong>多开终端</strong>：任务拆开并发处理（可延伸到 git feature 分支并行开发）</li>
+      <li><strong>遇到 bug 直接丢给 CC</strong>：环境变量、Skills 加载失败、MCP 启动失败——把报错和上下文丢给 CC</li>
+      <li><strong>"生成 → 检查 → 修正 → 再验收"</strong>：不要追求一次生成可行的代码</li>
+      <li><strong>长时间 auto</strong>：使用 <code style="font-family:'JetBrains Mono',monospace;font-size:0.88rem;background:rgba(0,240,255,0.06);padding:2px 6px;border-radius:3px;color:var(--accent-cyan)">--dangerously-skip-permissions</code></li>
+      <li><strong>Spec & Plan</strong>：Spec 是"写什么、怎么写、设计是啥"；Plan 是"按什么顺序写、写到什么阶段测试"</li>
+      <li><strong>思路不明确时</strong>：先用 Brainstorming skill 做头脑风暴，或与 LLM 交互形成大致思路</li>
+      <li><strong>迭代式开发</strong>：写 Spec → CC 生成 → 调整 Spec → CC 再生成 → 反复直到满意</li>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 13: Harness概念 ═══ -->
+  <div class="slide" data-index="13">
+    <div class="section-tag">四 · Harness 与协同<span class="sub-page">1 / 4</span></div>
+    <h2 class="slide-title">Agent = Model + Harness</h2>
+    <p class="slide-subtitle">Model 只是"大脑"，Harness 才是把模型变成"能稳定做事的系统"的工程骨架</p>
+    <div class="card-grid cols-3">
+      <div class="card" style="text-align:center">
+        <div style="font-size:1.4rem;margin-bottom:10px;color:var(--accent-cyan)">Task Context</div>
+        <p>当前任务的 prompt 与输入信息</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:1.4rem;margin-bottom:10px;color:var(--accent-purple)">Project Context</div>
+        <p>代码仓库结构与工程规则</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:1.4rem;margin-bottom:10px;color:var(--accent-green)">Environment Context</div>
+        <p>工具、权限与执行环境</p>
+      </div>
+    </div>
+    <div class="highlight-box" style="margin-top:18px">
+      <p>CC 的 Harness 体系：<strong>Hooks</strong> · <strong>Skills</strong> · <strong>Subagent</strong> · <strong>MCP</strong> · <strong>Memory</strong> · <strong>Plan/Task</strong></p>
+      <p style="margin-top:8px">环境上下文决定了 Agent <strong>能够做什么</strong>，以及<strong>能够做到什么程度</strong>。</p>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 14: 定位差异 ═══ -->
+  <div class="slide" data-index="14">
+    <div class="section-tag">四 · Harness 与协同<span class="sub-page">2 / 4</span></div>
+    <h2 class="slide-title">CC vs OpenClaw</h2>
+    <div class="card-grid cols-2">
+      <div class="card" style="border-color:rgba(0,240,255,0.25)">
+        <h3>Claude Code</h3>
+        <p style="margin-bottom:8px"><span class="badge cyan">专用编码 Agent</span></p>
+        <ul>
+          <li>定位：专门的 coding agent</li>
+          <li>写代码、改代码、调代码、跑任务</li>
+          <li>Harness 体系完善</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:rgba(168,85,247,0.25)">
+        <h3>OpenClaw</h3>
+        <p style="margin-bottom:8px"><span class="badge purple">智能助手 / 调度层</span></p>
+        <ul>
+          <li>定位：智能中枢</li>
+          <li>接收消息、定时触发、唤醒调度</li>
+          <li>自主唤醒能力，原生适配通讯工具</li>
+        </ul>
+      </div>
+    </div>
+    <div class="highlight-box" style="margin-top:14px">
+      <p>OpenClaw 属于单独的一类 agent，帮助打造<strong>智能中枢</strong>。需要花时间让 agent 具备足够的 skill（使用有冷启动，类似于基建类游戏）。</p>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 15: OpenClaw核心文件 ═══ -->
+  <div class="slide" data-index="15">
+    <div class="section-tag">四 · Harness 与协同<span class="sub-page">3 / 4</span></div>
+    <h2 class="slide-title">OpenClaw Agent Workspace 核心文件</h2>
+    <table class="tech-table">
+      <thead>
+        <tr><th>文件</th><th>作用</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>AGENTS.md</code></td><td>Agent 的工作说明书与行为准则，划定核心职责、任务流程与行为边界</td></tr>
+        <tr><td><code>BOOTSTRAP.md</code></td><td>全新工作区的一次性初始化引导脚本，完成后需删除</td></tr>
+        <tr><td><code>SOUL.md</code></td><td>Agent 的灵魂内核与顶层宪法，定义核心身份、人格、价值观与安全红线</td></tr>
+        <tr><td><code>MEMORY.md</code></td><td>Agent 的长期记忆中枢，存储用户稳定偏好、重要决策等跨会话信息</td></tr>
+        <tr><td><code>HEARTBEAT.md</code></td><td>Agent 的生物钟与主动任务引擎，负责周期任务、健康巡检与主动提醒</td></tr>
+        <tr><td><code>user.md</code></td><td>记录用户个人信息、职业背景、沟通偏好等完整档案</td></tr>
+        <tr><td><code>identity.md</code></td><td>定义 Agent 基础身份、运行环境配置、工具权限等</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ Slide 16: 高级协同 ═══ -->
+  <div class="slide" data-index="16">
+    <div class="section-tag">四 · Harness 与协同<span class="sub-page">4 / 4</span></div>
+    <h2 class="slide-title">多 Agent 协同模式</h2>
+    <div class="flow-steps" style="margin-bottom:26px">
+      <div class="flow-step" style="border-color:rgba(168,85,247,0.4);padding:16px 22px">
+        <div style="font-weight:700;color:var(--accent-purple)">OpenClaw</div>
+        <div style="font-size:0.88rem;margin-top:4px">接收消息 · 定时触发 · 任务调度</div>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" style="border-color:rgba(0,240,255,0.4);padding:16px 22px">
+        <div style="font-weight:700;color:var(--accent-cyan)">Claude Code / Codex</div>
+        <div style="font-size:0.88rem;margin-top:4px">编码子任务执行</div>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step" style="border-color:rgba(16,185,129,0.4);padding:16px 22px">
+        <div style="font-weight:700;color:var(--accent-green)">工具串联</div>
+        <div style="font-size:0.88rem;margin-top:4px">执行测试 · 回传结果</div>
+      </div>
+    </div>
+    <div class="highlight-box">
+      <p><strong>使用举例</strong>：用 OpenClaw 作为智能中枢总调度——调度数据采集 agent 搜集资讯、调用数据分析 agent 分析数据、调用 CC/Codex 写代码。</p>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 17: 资源推荐 ═══ -->
+  <div class="slide" data-index="17">
+    <div class="section-tag">五 · 资源推荐<span class="sub-page">1 / 2</span></div>
+    <h2 class="slide-title">开源仓库 & 工具</h2>
+    <div class="card-grid cols-2">
+      <div class="card">
+        <h3>推荐仓库</h3>
+        <ul>
+          <li><strong>everything-claude-code</strong> — harness/rules/skills/workflow 集合 (~143k stars)</li>
+          <li><strong>claude-howto</strong> — 系统化学习 CC 教程 (~21.3k stars)</li>
+          <li><strong>superpowers</strong> — workflow 型 skills 框架 (~137k stars)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Skills 站点 & 工具</h3>
+        <ul>
+          <li><strong>SkillHub</strong> — skill-cn.com</li>
+          <li><strong>腾讯 SkillHub</strong> — skillhub.tencent.com</li>
+          <li><strong>ClawHub</strong> — claw-hub-bay.vercel.app</li>
+          <li><strong>ccstatusline</strong> — CC 状态栏增强 (~6.8k)</li>
+          <li><strong>starship</strong> — 美化终端 (~55.9k)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 18: Coding模型推荐 ═══ -->
+  <div class="slide" data-index="18">
+    <div class="section-tag">五 · 资源推荐<span class="sub-page">2 / 2</span></div>
+    <h2 class="slide-title">Coding 模型推荐</h2>
+    <div class="card-grid cols-2">
+      <div class="card" style="border-color:rgba(0,240,255,0.2)">
+        <h3>国外</h3>
+        <div class="flow-steps" style="justify-content:flex-start;gap:6px;margin-top:8px">
+          <span class="badge cyan" style="font-size:0.92rem;padding:6px 14px">Claude 4.6 Opus</span>
+          <span style="color:var(--text-dim)">></span>
+          <span class="badge blue" style="font-size:0.92rem;padding:6px 14px">GPT-5.4</span>
+          <span style="color:var(--text-dim)">></span>
+          <span class="badge green" style="font-size:0.92rem;padding:6px 14px">Gemini 3.1 Pro</span>
+        </div>
+        <p style="margin-top:12px;font-size:0.88rem;color:var(--text-dim)">Gemini 前端强，Coding 相对弱</p>
+      </div>
+      <div class="card" style="border-color:rgba(168,85,247,0.2)">
+        <h3>国内</h3>
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+          <span class="badge purple" style="font-size:0.92rem;padding:6px 14px">GLM 5.1</span>
+          <span class="badge purple" style="font-size:0.92rem;padding:6px 14px">Minimax 2.7</span>
+          <span class="badge purple" style="font-size:0.92rem;padding:6px 14px">Qwen 3.5 Plus</span>
+          <span class="badge purple" style="font-size:0.92rem;padding:6px 14px">Kimi 2.5</span>
+          <span class="badge purple" style="font-size:0.92rem;padding:6px 14px">Doubao-seed-2.0</span>
+          <span class="badge purple" style="font-size:0.92rem;padding:6px 14px">Step-3.1-flash</span>
+          <span class="badge purple" style="font-size:0.92rem;padding:6px 14px">MimoV2-pro</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 19: 工程实践思维 ═══ -->
+  <div class="slide" data-index="19">
+    <div class="section-tag">六 · 总结</div>
+    <h2 class="slide-title">工程实践思维</h2>
+    <div class="card-grid cols-2" style="max-width:960px">
+      <div class="card" style="border-left:3px solid var(--accent-cyan)">
+        <p style="color:var(--text-primary);font-size:1.02rem;line-height:1.75"><strong style="color:var(--accent-cyan)">01</strong> 自然语言的模糊性和执行的精确性，是阻碍长程工作的一大障碍</p>
+        <p style="margin-top:6px;font-size:0.9rem;color:var(--text-dim)">Vibe Coding → Spec Coding</p>
+      </div>
+      <div class="card" style="border-left:3px solid var(--accent-purple)">
+        <p style="color:var(--text-primary);font-size:1.02rem;line-height:1.75"><strong style="color:var(--accent-purple)">02</strong> 工具的差异不只是模型差异，更是 Harness 和 Workflow 的差异</p>
+      </div>
+      <div class="card" style="border-left:3px solid var(--accent-green)">
+        <p style="color:var(--text-primary);font-size:1.02rem;line-height:1.75"><strong style="color:var(--accent-green)">03</strong> 真正决定效果的，是如何使用 Spec、Skills，并约束和验收你的项目</p>
+      </div>
+      <div class="card" style="border-left:3px solid var(--accent-orange)">
+        <p style="color:var(--text-primary);font-size:1.02rem;line-height:1.75"><strong style="color:var(--accent-orange)">04</strong> CC 适合作为主线工具，但最好和其他工具协同使用</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Slide 20: Thank You ═══ -->
+  <div class="slide title-slide" data-index="20">
+    <div class="main-title" style="font-size:3.2rem">Thank You</div>
+    <div class="glow-line"></div>
+    <div class="ending-text">
+      欢迎交流实际使用经验<br>
+      <strong>Questions & Discussion</strong>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Navigation Bar ── -->
+<div class="nav-bar">
+  <button class="nav-btn" id="prevBtn" onclick="navigate(-1)">◀ 上一页</button>
+  <span class="page-indicator" id="pageIndicator">1 / 21</span>
+  <button class="nav-btn" id="nextBtn" onclick="navigate(1)">下一页 ▶</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let currentSlide = 0;
+  let isAnimating = false;
+
+  function navigate(dir) {
+    if (isAnimating) return;
+    const newIndex = currentSlide + dir;
+    if (newIndex < 0 || newIndex >= totalSlides) return;
+    isAnimating = true;
+    const oldSlide = slides[currentSlide];
+    const newSlide = slides[newIndex];
+    newSlide.classList.remove('exit-left');
+    oldSlide.classList.remove('active');
+    if (dir > 0) oldSlide.classList.add('exit-left');
+    newSlide.classList.add('active');
+    currentSlide = newIndex;
+    updateUI();
+    setTimeout(() => { oldSlide.classList.remove('exit-left'); isAnimating = false; }, 460);
+  }
+
+  function updateUI() {
+    document.getElementById('pageIndicator').textContent = `${currentSlide + 1} / ${totalSlides}`;
+    document.getElementById('prevBtn').disabled = currentSlide === 0;
+    document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+    document.getElementById('progressBar').style.width = `${((currentSlide + 1) / totalSlides) * 100}%`;
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); navigate(1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); navigate(-1); }
+  });
+
+  let touchStartX = 0, touchStartY = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; touchStartY = e.changedTouches[0].screenY; });
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].screenX - touchStartX, dy = e.changedTouches[0].screenY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) navigate(dx < 0 ? 1 : -1);
+  });
+
+  let wheelCooldown = false;
+  document.addEventListener('wheel', (e) => {
+    if (wheelCooldown) return; wheelCooldown = true;
+    setTimeout(() => { wheelCooldown = false; }, 450);
+    if (e.deltaY > 0) navigate(1); else navigate(-1);
+  }, { passive: true });
+
+  updateUI();
+
+  // ── Floating Particles ──
+  (function() {
+    const canvas = document.getElementById('particlesCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    const PARTICLE_COUNT = 140;
+    let W, H;
+
+    const COLORS = [
+      { r: 0,   g: 240, b: 255 }, // cyan
+      { r: 168, g: 85,  b: 247 }, // purple
+      { r: 59,  g: 130, b: 246 }, // blue
+      { r: 16,  g: 185, b: 129 }, // green
+      { r: 200, g: 210, b: 230 }, // white-silver
+    ];
+
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Particle types for variety
+    function createParticle() {
+      const c = COLORS[Math.floor(Math.random() * COLORS.length)];
+      const layer = Math.random();  // 0=far/dim/slow, 1=near/bright/fast
+      const baseAlpha = 0.05 + layer * 0.25;
+      const size = 0.4 + layer * 2.2;
+      const speed = 0.08 + layer * 0.45;
+
+      // Movement pattern: random angle + optional wobble
+      const angle = Math.random() * Math.PI * 2;
+      const wobble = Math.random() > 0.6;
+
+      return {
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: size + Math.random() * 0.8,
+        vx: Math.cos(angle) * speed * (0.5 + Math.random()),
+        vy: Math.sin(angle) * speed * (0.5 + Math.random()),
+        baseAlpha: baseAlpha,
+        alpha: baseAlpha,
+        color: c,
+        // Pulse
+        pulseSpeed: 0.005 + Math.random() * 0.015,
+        pulsePhase: Math.random() * Math.PI * 2,
+        // Wobble
+        wobble: wobble,
+        wobbleAmp: 0.3 + Math.random() * 0.5,
+        wobbleSpeed: 0.01 + Math.random() * 0.02,
+        wobblePhase: Math.random() * Math.PI * 2,
+        // Glow (some particles get soft glow)
+        hasGlow: layer > 0.7 && Math.random() > 0.5,
+        // Trail particles
+        hasTrail: layer > 0.8 && Math.random() > 0.6,
+        trail: [],
+      };
+    }
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(createParticle());
+
+    let frame = 0;
+
+    function animate() {
+      ctx.clearRect(0, 0, W, H);
+      frame++;
+
+      for (let p of particles) {
+        // Update position
+        let moveX = p.vx;
+        let moveY = p.vy;
+
+        // Wobble: sinusoidal lateral drift
+        if (p.wobble) {
+          moveX += Math.sin(frame * p.wobbleSpeed + p.wobblePhase) * p.wobbleAmp * 0.15;
+          moveY += Math.cos(frame * p.wobbleSpeed * 0.7 + p.wobblePhase) * p.wobbleAmp * 0.1;
+        }
+
+        p.x += moveX;
+        p.y += moveY;
+
+        // Wrap around edges with margin
+        if (p.x < -10) p.x = W + 10;
+        if (p.x > W + 10) p.x = -10;
+        if (p.y < -10) p.y = H + 10;
+        if (p.y > H + 10) p.y = -10;
+
+        // Pulse alpha
+        p.alpha = p.baseAlpha + Math.sin(frame * p.pulseSpeed + p.pulsePhase) * p.baseAlpha * 0.5;
+        const a = Math.max(0, Math.min(1, p.alpha));
+
+        const { r, g, b } = p.color;
+
+        // Trail
+        if (p.hasTrail) {
+          p.trail.push({ x: p.x, y: p.y });
+          if (p.trail.length > 6) p.trail.shift();
+          for (let t = 0; t < p.trail.length; t++) {
+            const ta = a * (t / p.trail.length) * 0.4;
+            const tr = p.r * (t / p.trail.length) * 0.6;
+            ctx.beginPath();
+            ctx.arc(p.trail[t].x, p.trail[t].y, tr, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${r},${g},${b},${ta})`;
+            ctx.fill();
+          }
+        }
+
+        // Glow
+        if (p.hasGlow) {
+          const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
+          grad.addColorStop(0, `rgba(${r},${g},${b},${a * 0.3})`);
+          grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+        }
+
+        // Core dot
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
+        ctx.fill();
+      }
+
+      requestAnimationFrame(animate);
+    }
+    animate();
+  })();
+</script>
+
+</body>
+</html>
